@@ -7,19 +7,29 @@ import { populateChain, fetcher } from "../../../utils/fetch";
 import AddNetwork from "../../../components/chain";
 import Layout from "../../../components/Layout";
 import RPCList from "../../../components/RPCList";
-import chainIds from "../../../constants/chainIds.json";
+import chainIds from "../../../constants/chainIds.js";
+import { overwrittenChains } from "../../../constants/additionalChainRegistry/list";
 
 export async function getStaticProps({ params }) {
-  const chains = await fetcher("https://chainid.network/chains.json");
+  const [chains, chainTvls] = await Promise.all([
+    fetcher("https://chainid.network/chains.json"),
+    fetcher("https://api.llama.fi/chains"),
+  ]);
 
-  const chainTvls = await fetcher("https://api.llama.fi/chains");
 
-  const chain = chains.find(
-    (c) =>
-      c.chainId?.toString() === params.chain ||
-      c.chainId?.toString() === Object.entries(chainIds).find(([, name]) => params.chain === name)?.[0] ||
-      c.name.toLowerCase() === params.chain.toLowerCase().split("%20").join(" "),
-  );
+  const chain =
+    overwrittenChains.find(
+      (c) =>
+        c.chainId?.toString() === params.chain ||
+        c.chainId?.toString() === Object.entries(chainIds).find(([, name]) => params.chain === name)?.[0] ||
+        c.name.toLowerCase() === params.chain.toLowerCase().split("%20").join(" "),
+    ) ??
+    chains.find(
+      (c) =>
+        c.chainId?.toString() === params.chain ||
+        c.chainId?.toString() === Object.entries(chainIds).find(([, name]) => params.chain === name)?.[0] ||
+        c.name.toLowerCase() === params.chain.toLowerCase().split("%20").join(" "),
+    );
 
   if (!chain) {
     return {
@@ -29,7 +39,9 @@ export async function getStaticProps({ params }) {
 
   return {
     props: {
-      chain: chain ? populateChain(chain, chainTvls) : null,
+      chain: chain
+        ? populateChain(chain, chainTvls)
+        : null,
       // messages: (await import(`../../../translations/${locale}.json`)).default,
     },
     revalidate: 3600,
@@ -85,7 +97,9 @@ function Chain({ chain }) {
               className="rounded-full flex-shrink-0 flex relative"
               alt={chain.name + " logo"}
             />
-            <span className="text-xl font-semibold overflow-hidden text-ellipsis relative top-[1px] dark:text-[#B3B3B3]">{chain.name}</span>
+            <span className="text-xl font-semibold overflow-hidden text-ellipsis relative top-[1px] dark:text-[#B3B3B3]">
+              {chain.name}
+            </span>
           </Link>
 
           <table>
